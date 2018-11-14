@@ -1,0 +1,293 @@
+swagger: '2.0'
+info:
+  description: Sub Manager API
+  version: 1.0.0
+  title: Sub Manager
+  # put the contact info for your development or API team
+  contact:
+    email: admin@abysmalsoft.org
+
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+# tags are used for organizing operations
+tags:
+- name: domsOnly
+  description: Secured Dom-only calls
+
+paths:
+  /templates:
+    get:
+      tags:
+      - domsOnly
+      summary: searches templates
+      operationId: templates.search
+      description: |
+        By passing in the appropriate options, you can search for
+        available templates in the system
+      produces:
+      - application/json
+      parameters:
+      - in: query
+        name: searchString
+        description: pass an optional search string for looking up inventory
+        required: false
+        type: string
+      - in: query
+        name: skip
+        description: number of records to skip for pagination
+        type: integer
+        format: int32
+        minimum: 0
+      - in: query
+        name: limit
+        description: maximum number of records to return
+        type: integer
+        format: int32
+        minimum: 0
+        maximum: 50
+      responses:
+        200:
+          description: search results matching criteria
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Template'
+        400:
+          description: bad input parameter
+    post:
+      tags:
+      - domsOnly
+      summary: adds a week template
+      operationId: templates.add
+      description: Adds a template to the system
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - in: body
+        name: template
+        description: Template to add
+        schema:
+          $ref: '#/definitions/Template'
+      responses:
+        201:
+          description: template created
+        400:
+          description: invalid input, object invalid
+        409:
+          description: an existing item already exists
+    put:
+      tags:
+      - domsOnly
+      summary: updates a week template
+      operationId: templates.update
+      description: Updates an existing template
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - in: body
+        name: template
+        description: Updated template
+        schema:
+          $ref: '#/definitions/Template'
+      responses:
+        204:
+          description: template updated
+        400:
+          description: invalid input, object invalid
+  /weeks:
+    get:
+      summary: get week
+      operationId: weeks.get
+      description: |
+        Gets a given week for the logged in user
+      produces:
+      - application/json
+      parameters:
+      - in: query
+        name: week_start
+        description: the start of the week to get
+        required: false
+        type: string
+      - in: query
+        name: sub
+        required: false
+        type: string
+        format: uuid
+      responses:
+        200:
+          description: week matching criteria
+          schema:
+            $ref: '#/definitions/Week'
+        400:
+          description: bad input parameter
+    put:
+      tags:
+      - domsOnly
+      summary: updates a week template
+      operationId: weeks.update
+      description: Updates an existing week
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - in: body
+        name: week
+        description: Updated week
+        schema:
+          $ref: '#/definitions/Week'
+      responses:
+        204:
+          description: week updated
+        400:
+          description: invalid input, object invalid
+  /users:
+    get:
+      summary: get users
+      operationId: users.get
+      description: |
+        Gets users
+      produces:
+      - application/json
+      responses:
+        200:
+          description: users the logged in user has access to
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/User'
+definitions:
+  Template:
+    type: object
+    required:
+    - name
+    - owner
+    properties:
+      id:
+        type: string
+        format: uuid
+      owner:
+        type: string
+        format: uuid
+      name:
+        type: string
+      date_created:
+        type: string
+        format: date-time
+      date_updated:
+        type: string
+        format: date-time
+      duties:
+        type: array
+        items: 
+          $ref: '#/definitions/Duty'
+      rules:
+        type: array
+        items:
+          $ref: '#/definitions/Rule'
+  Duty:
+    type: object
+    required:
+    - name
+    - description
+    - responsible_party
+    - times_per_week
+    properties:
+      name:
+        type: string
+      description:
+        type: string
+      responsible_party:
+        type: string
+        enum:
+        - dom
+        - sub
+      times_per_week:
+        type: integer
+      requires_approval:
+        type: boolean
+      complete:
+        type: array
+        items:
+          type: object
+          properties:
+            complete_date:
+              type: string
+              format: date-time
+            approval_date:
+              type: string
+              format: date-time
+  Rule:
+    type: object
+    required:
+    - name
+    - description
+    - responsible_party
+    properties:
+      name:
+        type: string
+      description:
+        type: string
+      responsible_party:
+        type: string
+        enum:
+        - dom
+        - sub
+      times_violated:
+        type: integer
+  Week:
+    type: object
+    allOf:
+    - type: object
+      required:
+      - start_date
+      properties:
+        start_date:
+          type: string
+          format: date
+        sub:
+          type: string
+          format: uuid
+        from_template:
+          type: string
+          format: uuid
+    - $ref: '#/definitions/Template'
+  User:
+    type: object
+    properties:
+      date_created:
+        type: string
+        format: date-time
+      date_updated:
+        type: string
+        format: date-time
+      role:
+        type: string
+        enum:
+        - dom
+        - sub
+      owns:
+        type: array
+        items:
+          type: string
+          format: uuid
+      owned_by:
+        type: string
+        format: uuid
+        
+# Added by API Auto Mocking Plugin
+# host: localhost
+# basePath: /sub_manager/1.0.0
+# schemes:
+#  - http
+# Added by API Auto Mocking Plugin
+host: virtserver.swaggerhub.com
+basePath: /sub_manager/1.0.0
+schemes:
+ - http

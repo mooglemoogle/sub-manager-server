@@ -1,0 +1,292 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+
+    <title>Sub Manager</title>
+    <meta name="description" content="Sub Manager">
+
+    <!-- <link rel="stylesheet" href="css/styles.css?v=1.0"> -->
+    <script crossorigin src="https://unpkg.com/react@16.6.1/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@16.6.1/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bigfishtv-turret/4.0.0/turret.min.css" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Archivo+Black|Philosopher" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+    
+    <style>
+        body {
+            background-color: black;
+            color: lightgray;
+            font-family: 'Philosopher', sans-serif;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Archivo Black', sans-serif;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .duties {
+            display: flex;
+        }
+        
+        .rules {
+            display: flex;
+        }
+        
+        .completions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-evenly;
+            align-items: center;
+        }
+        .completions button {
+            width: 150px;
+        }
+        
+        .strikes {
+            display: flex;
+        }
+        
+        .strike {
+            color: red;
+            font-size: 40px;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root">
+        
+    </div>
+    
+    <script>
+        const e = React.createElement;
+        var startOfWeek = moment().utc().startOf('week').subtract(1, 'day');
+        fetch('/sub_manager/1.0.0/weeks?week_start=' + startOfWeek.format('Y-MM-DD'))
+            .then((result) => result.text())
+            .then((weekData) => {
+                week = JSON.parse(weekData);
+                ReactDOM.render(
+                    e(SubManager, {week: week}),
+                    document.getElementById('root')
+                );
+            });
+        function range(num) {
+            var toRet = [];
+            for (let i = 0; i < num; i++) { toRet.push(i); }
+            return toRet;
+        }
+        
+        class Completion extends React.Component {
+            render() {
+                return (
+                    e('button', {
+                        className: this.props.complete ? 'button success' : this.props.available ? 'button info': 'button info button-border',
+                        disabled: !this.props.available,
+                        onClick: this.props.complete ? this.props.unComplete : this.props.setComplete
+                    }, this.props.complete ? "Complete" : "Not Complete")
+                )
+            }
+        }
+        
+        class Duty extends React.Component {
+            
+            render() {
+                return (
+                    e('div', {className: 'duty padding-xs'}, [
+                        e('h4', {className: 'duty-name'}, `${this.props.name}`),
+                        e('p', {className: 'duty-description'}, `${this.props.desc}`),
+                        e('p', {className: 'duty-description-required-count'}, `Required ${this.props.timesRequired} ${this.props.timesRequired > 1 ? 'times': 'time'}`),
+                        e('div', {className: 'completions'}, range(this.props.timesRequired).map(index => {
+                            var completion = this.props.complete[index];
+                            var numComplete = this.props.complete.length;
+                            return e(Completion, {
+                                key: index,
+                                complete: completion ? completion.complete_date : false,
+                                available: index == numComplete || index == numComplete - 1,
+                                setComplete: this.props.addComplete,
+                                unComplete: this.props.unComplete
+                            }, null)
+                        }))
+                    ])
+                )
+            }
+        }
+        class Strike extends React.Component {
+            render() {
+                return (
+                    e('div', {className: 'strike'}, [
+                        e('i', {className: "far fa-times-circle"})
+                    ])
+                );
+            }
+        }
+        class Rule extends React.Component {
+            render() {
+                return (
+                    e('div', {className: 'rule padding-xs'}, [
+                        e('h4', {className: 'rule-name'}, `${this.props.name}`),
+                        e('p', {className: 'rule-description'}, `${this.props.desc}`),
+                        e('div', {className: 'strikes'}, range((this.props.timesViolated || 0) + 1).map((index) => {
+                            if (index === 0)
+                                return e('button', {
+                                    className: 'add-violation button button-success',
+                                    onClick: this.props.addViolation
+                                }, 'Add Violation');
+                            else
+                                return e(Strike);
+                        }))
+                    ])
+                )
+            }
+        }
+        class SubManager extends React.Component {
+            constructor(props) {
+                super(props);
+                this.state = {week: props.week};
+            }
+            saveWeek(week) {
+                fetch('/sub_manager/1.0.0/weeks', {
+                    method: "PUT",
+                    body: JSON.stringify(week),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                })
+            }
+            render() {
+                var week = this.state.week;
+                return (
+                    e('div', {className: 'sub-manager container'}, [
+                        e('div', {className: 'header'}, [
+                            e('h1', {className: 'no-margin'}, 'Sub Manager'),
+                            e('h3', {className: 'no-margin'}, `Week of ${startOfWeek.format('ddd MMM D, Y')}`),
+                        ]),
+                        e('div', {className: 'for-sub container  border border-color-light-100 border-radius margin-vertical-s padding-s'}, [
+                            e('h2', {className: 'section'}, "Sub's Responsibilities"),
+                            e('h3', {className: 'section'}, "Duties"),
+                            e('div', {className: 'duties'}, week.duties
+                                .filter((duty) => duty.responsible_party == 'sub')
+                                .map((duty, index) => {
+                                    var addComplete = () => {
+                                        if (duty.complete.length >= duty.times_per_week) {
+                                            return;
+                                        }
+                                        var date = moment().utc().toISOString();
+                                        var completion = {
+                                            complete_date: date
+                                        };
+                                        if (!duty.requires_approval) {
+                                            completion.approval_date = date
+                                        }
+                                        duty.complete.push(completion);
+                                        this.setState({week: JSON.parse(JSON.stringify(week))});
+                                        this.saveWeek(week);
+                                    }
+                                    var unComplete = () => {
+                                        duty.complete.pop();
+                                        this.setState({week: JSON.parse(JSON.stringify(week))});
+                                        this.saveWeek(week);
+                                    }
+                                    return e(Duty, {
+                                        key: index,
+                                        name: duty.name,
+                                        desc: duty.description,
+                                        timesRequired: duty.times_per_week,
+                                        complete: duty.complete,
+                                        addComplete: addComplete,
+                                        unComplete: unComplete
+                                    }, null);
+                                })
+                            ),
+                            e('h3', {className: 'section'}, "Rules"),
+                            e('div', {className: 'rules'}, week.rules
+                                .filter((rule) => rule.responsible_party == 'sub')
+                                .map((rule, index) => {
+                                    var addViolation = () => {
+                                        rule.times_violated ++;
+                                        this.setState({week: JSON.parse(JSON.stringify(week))});
+                                        this.saveWeek(week);
+                                    };
+                                    return e(Rule, {
+                                        key: index,
+                                        name: rule.name,
+                                        desc: rule.description,
+                                        timesViolated: rule.times_violated,
+                                        addViolation: addViolation
+                                    }, null);
+                                })
+                            )
+                        ]),
+                        e('div', {className: 'for-dom container border border-color-light-100 border-radius margin-vertical-s padding-s'}, [
+                            e('h2', {className: 'section'}, "Dom's Responsibilities"),
+                            e('h3', {className: 'section'}, "Duties"),
+                            e('div', {className: 'duties'}, week.duties
+                                .filter((duty) => duty.responsible_party == 'dom')
+                                .map((duty, index) => {
+                                    var addComplete = () => {
+                                        if (duty.complete.length >= duty.times_per_week) {
+                                            return;
+                                        }
+                                        var date = moment().utc().toISOString();
+                                        var completion = {
+                                            complete_date: date
+                                        };
+                                        if (!duty.requires_approval) {
+                                            completion.approval_date = date
+                                        }
+                                        duty.complete.push(completion);
+                                        this.setState({week: JSON.parse(JSON.stringify(week))});
+                                        this.saveWeek(week);
+                                    };
+                                    var unComplete = () => {
+                                        duty.complete.pop();
+                                        this.setState({week: JSON.parse(JSON.stringify(week))});
+                                        this.saveWeek(week);
+                                    };
+                                    return e(Duty, {
+                                        key: index,
+                                        name: duty.name,
+                                        desc: duty.description,
+                                        timesRequired: duty.times_per_week,
+                                        complete: duty.complete,
+                                        addComplete: addComplete,
+                                        unComplete: unComplete
+                                    }, null);
+                                })
+                            ),
+                            e('h3', {className: 'section'}, "Rules"),
+                            e('div', {className: 'rules'}, week.rules
+                                .filter((rule) => rule.responsible_party == 'dom')
+                                .map((rule, index) => {
+                                    var addViolation = () => {
+                                        rule.times_violated ++;
+                                        this.setState({week: JSON.parse(JSON.stringify(week))});
+                                        this.saveWeek(week);
+                                    };
+                                    return e(Rule, {
+                                        key: index,
+                                        name: rule.name,
+                                        desc: rule.description,
+                                        timesViolated: rule.times_violated,
+                                        addViolation: addViolation
+                                    }, null);
+                                })
+                            )
+                        ])
+                    ])
+                )
+            }
+        }
+    </script>
+</body>
+</html>
